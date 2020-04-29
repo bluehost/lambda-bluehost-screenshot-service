@@ -116,12 +116,12 @@ async function fileExistsOnS3(bucket, file) {
  */
 async function captureScreenshot(url) {
     const params = {
-        FunctionName: 'bluehost-generate-screenshot',
+        FunctionName: 'bluehost-generate-screenshot:active',
         Payload: JSON.stringify({url}, null, 2),
     };
 
     return await new Promise((resolve, reject) => {
-        lambda.invoke(params, (err, data) => err ? reject(err) : resolve(JSON.parse(data.Payload)));
+        lambda.invoke(params, (err, {Payload}) => err ? reject(err) : resolve(JSON.parse(Payload)));
     });
 }
 
