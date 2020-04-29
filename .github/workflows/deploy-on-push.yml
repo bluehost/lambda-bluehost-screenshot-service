@@ -1,0 +1,64 @@
+name: Deploy to Lambda
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - index.js
+      - package.json
+      - package-lock.json
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Get Function Name
+        id: lambda
+        env:
+          REPO: ${{ github.repository }}
+        run: echo ::set-output name=functionName::${REPO/bluehost\/lambda-/}
+
+      - name: Set Node.js 12.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+
+      - name: Node version
+        run: node --version
+
+      - name: NPM version
+        run: npm --version
+
+      - name: Get npm cache directory
+        id: npm-cache
+        run: echo "::set-output name=dir::$(npm config get cache)"
+
+      - name: Cache node modules
+        uses: actions/cache@v1
+        with:
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: npm install
+        run: npm install --production
+
+      - name: Create Zip
+        run: zip -r ${{ steps.lambda.outputs.functionName }}.zip . -x "*.git*" "*.zip" "deploy.js" "local.js" "package.json" "package-lock.json"
+
+      - name: Deploy
+        uses: appleboy/lambda-action@master
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}
+          function_name: ${{ steps.lambda.outputs.functionName }}
+          zip_file: "${{ steps.lambda.outputs.functionName }}.zip"
+          publish: false
