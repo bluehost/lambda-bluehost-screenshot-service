@@ -1,15 +1,9 @@
 const {
-    base64Decode,
-    base64Encode,
-    bufferToStream,
-    captureScreenshot,
-    fetchFromS3,
     fileExistsOnS3,
+    getS3Url,
     md5,
-    send404,
-    sendImage,
-    sendPlaceholderImage,
-    uploadToS3
+    queueScreenshotGeneration,
+    sendRedirect,
 } = require('./functions');
 
 exports.Screenshot = class {
@@ -37,21 +31,12 @@ exports.Screenshot = class {
         }
     }
 
-    async persist(base64) {
-        return await uploadToS3(this.bucket, this.filepath(), bufferToStream(base64Decode(base64)));
-    }
-
     async fetch() {
-        try {
-            const response = await fetchFromS3(this.bucket, this.filepath());
-            return sendImage(base64Encode(response.Body));
-        } catch (e) {
-            try {
-                return sendImage(await this.persist(await captureScreenshot(this.url)));
-            } catch (e) {
-                return sendPlaceholderImage();
-            }
+        if (!await this.hasScreenshot()) {
+            queueScreenshotGeneration(this.bucket, this.filepath(), this.url);
+            return sendRedirect(getS3Url(this.bucket, 'placeholder.png'), 302);
         }
+        return sendRedirect(getS3Url(this.bucket, this.filepath()));
     }
 
 };

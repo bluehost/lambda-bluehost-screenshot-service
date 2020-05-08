@@ -3,6 +3,7 @@ const {get} = require('axios');
 const crypto = require('crypto');
 const {readFileSync} = require('fs');
 const {Readable} = require('stream');
+const streamToArray = require('stream-to-array');
 
 const lambda = new Lambda();
 const s3 = new S3();
@@ -40,6 +41,18 @@ function bufferToStream(buffer) {
             this.push(null);
         }
     });
+}
+
+/**
+ * Convert a stream to a buffer.
+ *
+ * @param {Readable} stream
+ * @returns {Promise<Buffer>}
+ */
+async function streamToBuffer(stream) {
+    const parts = await streamToArray(stream);
+    const buffers = parts.map(part => Buffer.isBuffer(part) ? part : Buffer.from(part));
+    return Buffer.concat(buffers);
 }
 
 /**
@@ -126,6 +139,24 @@ async function captureScreenshot(url) {
 }
 
 /**
+ * Asynchronously generate a screenshot given a URL.
+ *
+ * @param {string} bucket
+ * @param {string} key
+ * @param {string} url
+ * @returns {string}
+ */
+function queueScreenshotGeneration(bucket, key, url) {
+    const params = {
+        InvocationType: 'Event',
+        FunctionName: 'bluehost-url-to-screenshot-on-s3',
+        Payload: JSON.stringify({bucket, key, url}, null, 2),
+    };
+
+    lambda.invoke(params).send();
+}
+
+/**
  * Send an image as a response.
  *
  * @param base64
@@ -169,6 +200,17 @@ function sendError(message = 'Unable to generate screenshot') {
     };
 }
 
+function sendRedirect(location, statusCode = 301) {
+    return {
+        statusCode: 301,
+        headers: {
+            Location: location,
+        },
+        body: '',
+        isBase64Encoded: false,
+    };
+}
+
 /**
  * Send a 404 response.
  *
@@ -180,6 +222,10 @@ function send404() {
     };
 }
 
+function getS3Url(bucket, file) {
+    return `http://${bucket}.s3.amazonaws.com/${file}`;
+}
+
 module.exports = {
     base64Decode,
     base64Encode,
@@ -187,10 +233,13 @@ module.exports = {
     captureScreenshot,
     fetchFromS3,
     fileExistsOnS3,
+    getS3Url,
     md5,
+    queueScreenshotGeneration,
     send404,
     sendError,
     sendImage,
     sendPlaceholderImage,
+    sendRedirect,
     uploadToS3,
 };
