@@ -12,7 +12,7 @@
   "license": "GPL-2.0-or-later",
   "dependencies": {
     "aws-sdk": "^2.547.0",
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "stream-to-array": "^2.3.0"
   },
   "devDependencies": {
