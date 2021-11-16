@@ -11,7 +11,7 @@
   "author": "Micah Wood <micah@wpscholar.com>",
   "license": "GPL-2.0-or-later",
   "dependencies": {
-    "aws-sdk": "^2.547.0",
+    "aws-sdk": "^2.814.0",
     "axios": "^0.21.1",
     "stream-to-array": "^2.3.0"
   },
